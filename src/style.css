@@ -8,9 +8,59 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 #map {
   width: 100vw;
   height: 100vh;
+}
+
+/* User location marker */
+.user-marker {
+  background: transparent;
+  border: none;
+}
+
+.user-marker-arrow {
+  transition: transform 0.2s ease-out;
+}
+
+.user-marker-arrow svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Location denied message */
+.location-denied-message {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  text-align: center;
+  max-width: 300px;
+}
+
+.location-denied-message p {
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.location-denied-message button {
+  margin-top: 8px;
+  padding: 8px 16px;
+  border: none;
+  background: #4285f4;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.location-denied-message button:hover {
+  background: #1a73e8;
 }
