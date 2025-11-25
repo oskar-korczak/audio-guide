@@ -13,6 +13,13 @@ import { createAudioPlayer, cleanup as cleanupAudio } from './services/audio.js'
 import { showAudioPlayer, hideAudioPlayer, setPlayingState, setAudioEnded } from './components/AudioPlayer.js';
 import { subscribe, getState, isGenerating, isAudioReady, getSelectedAttraction } from './state/AppState.js';
 import { selectAttraction, cancelSelection, updateAttractions, setAttractionsLoading } from './state/actions.js';
+import { initErrorBoundary } from './utils/errorBoundary.js';
+import { initNetworkDetection } from './utils/network.js';
+import { showError, startTimeoutWarning, clearTimeoutWarning, showTimeoutWarning } from './components/ErrorMessage.js';
+
+// Initialize error handling first
+initErrorBoundary();
+initNetworkDetection();
 
 // Initialize map
 const map = initMap('map');
@@ -61,13 +68,53 @@ async function handleAttractionClick(attraction) {
   lastSelectedAttraction = attraction;
   audioPlayer = null; // Clear reference so subscriber can create new one
 
+  // Start timeout warning
+  startTimeoutWarning(showTimeoutWarning, 30000);
+
   try {
     await selectAttraction(attraction);
   } catch (error) {
     if (error.name !== 'AbortError') {
-      showGenerationError(error);
+      handleAPIError(error);
     }
+  } finally {
+    clearTimeoutWarning();
   }
+}
+
+/**
+ * Handle API errors with specific messages
+ */
+function handleAPIError(error) {
+  let title = 'Generation Failed';
+  let message = 'Unable to generate audio guide. Please try again.';
+  let retryable = true;
+
+  // OpenAI specific errors
+  if (error.status === 401) {
+    title = 'Invalid API Key';
+    message = 'The API key is invalid. Please check your configuration.';
+    retryable = false;
+  } else if (error.status === 429) {
+    message = 'Rate limit reached. Please wait a moment and try again.';
+  } else if (error.code === 'insufficient_quota') {
+    title = 'API Quota Exceeded';
+    message = 'Your API account has run out of credits. Please check your billing.';
+    retryable = false;
+  } else if (error.status === 422) {
+    message = 'The content could not be processed. Please try a different attraction.';
+  }
+
+  showError({
+    title,
+    message,
+    retryable,
+    onRetry: () => {
+      if (lastSelectedAttraction) {
+        handleAttractionClick(lastSelectedAttraction);
+      }
+    }
+  });
 }
 
 // Expose cancel function for cancel button
@@ -91,14 +138,11 @@ window.retryAudioGeneration = () => {
  * Show message when location permission is denied
  */
 function showLocationDeniedMessage() {
-  const message = document.createElement('div');
-  message.className = 'location-denied-message';
-  message.innerHTML = `
-    <p>Location access was denied.</p>
-    <p>You can still explore the map manually.</p>
-    <button onclick="this.parentElement.remove()">Dismiss</button>
-  `;
-  document.body.appendChild(message);
+  showError({
+    title: 'Location Unavailable',
+    message: 'Location access was denied. You can still explore the map and generate audio guides manually.',
+    autoHide: 5000
+  });
 }
 
 /**
@@ -229,7 +273,27 @@ function handleViewportChange(viewport) {
       hideAttractionsLoading();
       setAttractionsLoading(false);
       console.error('Failed to load attractions:', error);
-      // Error handling will be enhanced in WP08
+
+      let title = 'Failed to Load Attractions';
+      let message = 'Unable to find nearby attractions. Please try again.';
+
+      if (error.message === 'RATE_LIMITED') {
+        message = 'Too many requests. Please wait a moment and try again.';
+      } else if (error.message === 'TIMEOUT') {
+        message = 'The request took too long. Try zooming in for a smaller area.';
+      }
+
+      showError({
+        title,
+        message,
+        retryable: true,
+        onRetry: () => {
+          const viewport = getViewport();
+          if (viewport) {
+            handleViewportChange(viewport);
+          }
+        }
+      });
     }
   );
 }
