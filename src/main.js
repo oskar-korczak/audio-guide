@@ -2,11 +2,12 @@
 // Entry point - initializes map and services
 
 import './style.css';
-import { initMap, addTileLayer, setCenter, onViewportChange, getViewport } from './components/Map.js';
-import { debounce } from './utils/debounce.js';
+import { initMap, addTileLayer, setCenter, onViewportChange, getViewport, getMap } from './components/Map.js';
 import { watchPosition, requestGeolocationPermission } from './services/geolocation.js';
 import { watchOrientation, requestOrientationPermission, isPermissionRequired } from './services/orientation.js';
 import { createUserMarker, updateUserPosition, updateUserHeading } from './components/UserMarker.js';
+import { debouncedLoadAttractions } from './services/attractionsManager.js';
+import { addAttractionMarker, clearAllMarkers } from './components/AttractionMarker.js';
 
 // Initialize map
 const map = initMap('map');
@@ -79,11 +80,95 @@ async function initLocation() {
 // Start location initialization
 initLocation();
 
-// Viewport changes (for attractions loading in WP04)
-const handleViewportChange = debounce((viewport) => {
-  console.log('Viewport changed:', viewport);
-}, 500);
+/**
+ * Show loading indicator during attraction fetch
+ */
+function showAttractionsLoading() {
+  let indicator = document.getElementById('attractions-loading');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'attractions-loading';
+    indicator.className = 'loading-indicator';
+    indicator.innerHTML = '<span>Loading attractions...</span>';
+    document.body.appendChild(indicator);
+  }
+  indicator.style.display = 'block';
+}
+
+/**
+ * Hide loading indicator
+ */
+function hideAttractionsLoading() {
+  const indicator = document.getElementById('attractions-loading');
+  if (indicator) {
+    indicator.style.display = 'none';
+  }
+}
+
+/**
+ * Show message when no attractions found
+ */
+function showNoAttractionsMessage() {
+  let message = document.getElementById('no-attractions');
+  if (!message) {
+    message = document.createElement('div');
+    message.id = 'no-attractions';
+    message.className = 'no-attractions-message';
+    message.textContent = 'No attractions found in this area. Try zooming out or moving the map.';
+    document.body.appendChild(message);
+  }
+  message.style.display = 'block';
+
+  // Auto-hide after 5 seconds
+  setTimeout(() => {
+    message.style.display = 'none';
+  }, 5000);
+}
+
+/**
+ * Handle viewport changes - load attractions for new area
+ */
+function handleViewportChange(viewport) {
+  debouncedLoadAttractions(
+    viewport.bounds,
+    () => {
+      showAttractionsLoading();
+    },
+    (attractions) => {
+      hideAttractionsLoading();
+      clearAllMarkers();
+
+      if (attractions.length === 0) {
+        showNoAttractionsMessage();
+        return;
+      }
+
+      // Limit markers for iOS performance
+      const limitedAttractions = attractions.slice(0, 100);
+
+      limitedAttractions.forEach(attraction => {
+        addAttractionMarker(getMap(), attraction, (clicked) => {
+          console.log('Attraction clicked:', clicked.name);
+          // Audio generation will be added in WP05
+        });
+      });
+
+      console.log(`Loaded ${limitedAttractions.length} attractions`);
+    },
+    (error) => {
+      hideAttractionsLoading();
+      console.error('Failed to load attractions:', error);
+      // Error handling will be enhanced in WP08
+    }
+  );
+}
 
 onViewportChange(handleViewportChange);
+
+// Trigger initial load after map is ready
+const initialViewport = getViewport();
+if (initialViewport) {
+  handleViewportChange(initialViewport);
+}
 
 console.log('Audio Tour Guide initialized');
