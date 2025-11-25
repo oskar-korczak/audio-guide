@@ -1,11 +1,10 @@
 // audio.js - Audio playback service with iOS Chrome compatibility
 
+import { rlog } from '../utils/remoteLogger.js';
+
 let currentAudio = null;
 let currentUrl = null;
 let audioUnlocked = false;
-
-// Tiny silent MP3 for iOS audio unlock
-const SILENT_AUDIO = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYHO0JJAAAAAAAAAAAAAAAAAAAAAP/7kGQAAANUMEoFPeACNQV40KEAAQB4HXuDzgABCgqsA5lGIABhYxBTBz4PoOwMABgEAEHMABjAGPg+QBg//tYZAkAA1YxSgU94AI1BWigqCABAAAAAPcAAAAAAAAAANWMDuAxBUAAAB//9AAAAAAwAAAAAwAAAADgAAAAMAAAAA4ABAACAAAJmAAAAAAAAAAAbgEEEEE=';
 
 /**
  * Unlock iOS audio context on first user interaction
@@ -13,21 +12,42 @@ const SILENT_AUDIO = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4
  * @returns {Promise<boolean>} Whether unlock succeeded
  */
 export async function unlockAudio() {
-  if (audioUnlocked) return true;
+  if (audioUnlocked) {
+    rlog.info('Audio already unlocked');
+    return true;
+  }
+
+  rlog.info('Attempting audio unlock...');
 
   try {
-    const audio = new Audio();
-    audio.src = SILENT_AUDIO;
-    audio.volume = 0.01; // Nearly silent
+    // Create audio context approach (more reliable on iOS)
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      const ctx = new AudioContext();
+      rlog.info('AudioContext state:', ctx.state);
 
-    await audio.play();
-    audio.pause();
-    audio.src = '';
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+        rlog.info('AudioContext resumed');
+      }
+
+      // Play a tiny buffer
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+
+      rlog.info('Silent buffer played');
+    }
 
     audioUnlocked = true;
+    rlog.info('Audio unlock SUCCESS');
     return true;
   } catch (error) {
-    console.warn('Audio unlock failed:', error);
+    rlog.error('Audio unlock failed:', error.message);
+    // Still mark as unlocked to not block - we'll handle errors at playback time
+    audioUnlocked = true;
     return false;
   }
 }
