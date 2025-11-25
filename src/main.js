@@ -2,6 +2,7 @@
 // Entry point - initializes map and services
 
 import './style.css';
+import { rlog } from './utils/remoteLogger.js';
 import { initMap, addTileLayer, setCenter, onViewportChange, getViewport, getMap } from './components/Map.js';
 import { watchPosition, requestGeolocationPermission } from './services/geolocation.js';
 import { watchOrientation, requestOrientationPermission, isPermissionRequired } from './services/orientation.js';
@@ -63,6 +64,7 @@ subscribe((state) => {
  * Handle attraction marker click - use state management
  */
 async function handleAttractionClick(attraction) {
+  rlog.info('Attraction clicked:', attraction.name);
   lastSelectedAttraction = attraction;
   audioPlayer = null; // Clear reference so subscriber can create new one
 
@@ -71,8 +73,10 @@ async function handleAttractionClick(attraction) {
 
   try {
     await selectAttraction(attraction);
+    rlog.info('Audio generation complete for:', attraction.name);
   } catch (error) {
     if (error.name !== 'AbortError') {
+      rlog.error('Generation failed:', error.message, error.status);
       handleAPIError(error);
     }
   } finally {
@@ -164,7 +168,9 @@ async function initOrientation() {
  * Initialize location tracking
  */
 async function initLocation() {
+  rlog.info('Requesting location permission...');
   const result = await requestGeolocationPermission();
+  rlog.info('Location permission:', result.status);
 
   if (result.status === 'granted') {
     watchPosition(
@@ -252,6 +258,7 @@ function handleViewportChange(viewport) {
     (attractions) => {
       hideAttractionsLoading();
       setAttractionsLoading(false);
+      rlog.info('Attractions loaded:', attractions.length);
 
       if (attractions.length === 0) {
         showNoAttractionsMessage();
