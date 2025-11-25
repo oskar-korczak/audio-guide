@@ -10,6 +10,8 @@ import { debouncedLoadAttractions } from './services/attractionsManager.js';
 import { addAttractionMarker, clearAllMarkers, setMarkerSelected } from './components/AttractionMarker.js';
 import { generateAudioGuide, cleanupAudioGuide } from './services/audioGuideGenerator.js';
 import { showGenerationProgress, hideGenerationProgress, showGenerationError } from './components/LoadingIndicator.js';
+import { createAudioPlayer, cleanup as cleanupAudio, unlockAudio } from './services/audio.js';
+import { showAudioPlayer, hideAudioPlayer, setPlayingState, setAudioEnded } from './components/AudioPlayer.js';
 
 // Initialize map
 const map = initMap('map');
@@ -22,11 +24,28 @@ let currentAbortController = null;
 let currentAudioGuide = null;
 let lastSelectedAttraction = null;
 let selectedAttractionId = null;
+let audioPlayer = null;
+
+/**
+ * Cleanup current audio resources
+ */
+function cleanupCurrentAudio() {
+  hideAudioPlayer();
+  cleanupAudio();
+  if (currentAudioGuide) {
+    cleanupAudioGuide(currentAudioGuide);
+    currentAudioGuide = null;
+  }
+  audioPlayer = null;
+}
 
 /**
  * Handle attraction marker click - start audio generation
  */
 async function handleAttractionClick(attraction) {
+  // Unlock audio on first click (iOS requirement)
+  await unlockAudio();
+
   // Deselect previous marker
   if (selectedAttractionId !== null) {
     setMarkerSelected(selectedAttractionId, false);
@@ -42,10 +61,7 @@ async function handleAttractionClick(attraction) {
   }
 
   // Cleanup previous audio
-  if (currentAudioGuide) {
-    cleanupAudioGuide(currentAudioGuide);
-    currentAudioGuide = null;
-  }
+  cleanupCurrentAudio();
 
   lastSelectedAttraction = attraction;
   currentAbortController = new AbortController();
@@ -58,9 +74,21 @@ async function handleAttractionClick(attraction) {
     );
 
     hideGenerationProgress();
-    // Show audio player (WP06)
+
+    // Create audio player
+    audioPlayer = createAudioPlayer(currentAudioGuide.audioUrl);
+
+    // Show player UI
+    showAudioPlayer(attraction.name, (isPlaying) => {
+      console.log('Playback state:', isPlaying);
+    });
+
+    // Handle audio end
+    audioPlayer.onEnded(() => {
+      setAudioEnded();
+    });
+
     console.log('Audio ready:', currentAudioGuide.audioUrl);
-    console.log('Script:', currentAudioGuide.script);
 
   } catch (error) {
     if (error.name !== 'AbortError') {
@@ -77,12 +105,20 @@ window.cancelAudioGeneration = () => {
     hideGenerationProgress();
   }
 
+  // Cleanup audio
+  cleanupCurrentAudio();
+
   // Deselect marker
   if (selectedAttractionId !== null) {
     setMarkerSelected(selectedAttractionId, false);
     selectedAttractionId = null;
   }
 };
+
+// Cleanup on page unload to prevent memory leaks
+window.addEventListener('beforeunload', () => {
+  cleanupCurrentAudio();
+});
 
 // Expose retry function for retry button
 window.retryAudioGeneration = () => {

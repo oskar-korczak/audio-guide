@@ -251,3 +251,68 @@ html, body {
 .dismiss-btn:hover {
   background: #f5f5f5;
 }
+
+/* Audio player */
+.audio-player {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 1000;
+}
+
+.player-info {
+  flex: 1;
+  margin-right: 16px;
+  overflow: hidden;
+}
+
+.player-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-status {
+  font-size: 13px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.play-pause-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #4285f4;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.play-pause-btn:hover {
+  background: #1a73e8;
+  transform: scale(1.05);
+}
+
+.play-pause-btn:active {
+  transform: scale(0.95);
+}
+
+.play-pause-btn svg {
+  margin-left: 2px; /* Visual centering for play icon */
+}
