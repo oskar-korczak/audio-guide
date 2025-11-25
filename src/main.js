@@ -7,13 +7,89 @@ import { watchPosition, requestGeolocationPermission } from './services/geolocat
 import { watchOrientation, requestOrientationPermission, isPermissionRequired } from './services/orientation.js';
 import { createUserMarker, updateUserPosition, updateUserHeading } from './components/UserMarker.js';
 import { debouncedLoadAttractions } from './services/attractionsManager.js';
-import { addAttractionMarker, clearAllMarkers } from './components/AttractionMarker.js';
+import { addAttractionMarker, clearAllMarkers, setMarkerSelected } from './components/AttractionMarker.js';
+import { generateAudioGuide, cleanupAudioGuide } from './services/audioGuideGenerator.js';
+import { showGenerationProgress, hideGenerationProgress, showGenerationError } from './components/LoadingIndicator.js';
 
 // Initialize map
 const map = initMap('map');
 addTileLayer(map);
 
 let hasInitialLocation = false;
+
+// Audio generation state
+let currentAbortController = null;
+let currentAudioGuide = null;
+let lastSelectedAttraction = null;
+let selectedAttractionId = null;
+
+/**
+ * Handle attraction marker click - start audio generation
+ */
+async function handleAttractionClick(attraction) {
+  // Deselect previous marker
+  if (selectedAttractionId !== null) {
+    setMarkerSelected(selectedAttractionId, false);
+  }
+
+  // Select new marker
+  selectedAttractionId = attraction.id;
+  setMarkerSelected(attraction.id, true);
+
+  // Cancel any existing generation
+  if (currentAbortController) {
+    currentAbortController.abort();
+  }
+
+  // Cleanup previous audio
+  if (currentAudioGuide) {
+    cleanupAudioGuide(currentAudioGuide);
+    currentAudioGuide = null;
+  }
+
+  lastSelectedAttraction = attraction;
+  currentAbortController = new AbortController();
+
+  try {
+    currentAudioGuide = await generateAudioGuide(
+      attraction,
+      (status) => showGenerationProgress(status),
+      currentAbortController.signal
+    );
+
+    hideGenerationProgress();
+    // Show audio player (WP06)
+    console.log('Audio ready:', currentAudioGuide.audioUrl);
+    console.log('Script:', currentAudioGuide.script);
+
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      showGenerationError(error);
+    }
+  }
+}
+
+// Expose cancel function for cancel button
+window.cancelAudioGeneration = () => {
+  if (currentAbortController) {
+    currentAbortController.abort();
+    currentAbortController = null;
+    hideGenerationProgress();
+  }
+
+  // Deselect marker
+  if (selectedAttractionId !== null) {
+    setMarkerSelected(selectedAttractionId, false);
+    selectedAttractionId = null;
+  }
+};
+
+// Expose retry function for retry button
+window.retryAudioGeneration = () => {
+  if (lastSelectedAttraction) {
+    handleAttractionClick(lastSelectedAttraction);
+  }
+};
 
 /**
  * Show message when location permission is denied
@@ -147,10 +223,7 @@ function handleViewportChange(viewport) {
       const limitedAttractions = attractions.slice(0, 100);
 
       limitedAttractions.forEach(attraction => {
-        addAttractionMarker(getMap(), attraction, (clicked) => {
-          console.log('Attraction clicked:', clicked.name);
-          // Audio generation will be added in WP05
-        });
+        addAttractionMarker(getMap(), attraction, handleAttractionClick);
       });
 
       console.log(`Loaded ${limitedAttractions.length} attractions`);
