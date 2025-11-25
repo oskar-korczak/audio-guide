@@ -8,11 +8,15 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
+
+	apierrors "audio-guide-api/errors"
 )
 
 const (
 	elevenLabsEndpoint = "https://api.elevenlabs.io/v1/text-to-speech"
 	defaultVoiceID     = "21m00Tcm4TlvDq8ikWAM" // Rachel - clear and professional
+	elevenLabsTimeout  = 30 * time.Second
 )
 
 type voiceSettings struct {
@@ -46,12 +50,19 @@ func NewElevenLabsService() (*ElevenLabsService, error) {
 	}
 	return &ElevenLabsService{
 		apiKey: apiKey,
-		client: &http.Client{},
+		client: &http.Client{
+			Timeout: elevenLabsTimeout,
+		},
 	}, nil
 }
 
 // GenerateAudio converts script text to MP3 audio
 func (s *ElevenLabsService) GenerateAudio(ctx context.Context, script string) ([]byte, error) {
+	// Check if context is already done
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	reqBody := ttsRequest{
 		Text:    script,
 		ModelID: "eleven_monolingual_v1",
@@ -80,6 +91,10 @@ func (s *ElevenLabsService) GenerateAudio(ctx context.Context, script string) ([
 
 	resp, err := s.client.Do(req)
 	if err != nil {
+		// Check if it was a timeout or cancellation
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -91,19 +106,11 @@ func (s *ElevenLabsService) GenerateAudio(ctx context.Context, script string) ([
 
 	if resp.StatusCode != http.StatusOK {
 		var errResp elevenLabsError
+		errMsg := fmt.Sprintf("ElevenLabs API error: %d", resp.StatusCode)
 		if json.Unmarshal(body, &errResp) == nil {
-			msg := parseElevenLabsError(errResp.Detail)
-			return nil, &APIError{
-				StatusCode: resp.StatusCode,
-				Service:    "elevenlabs",
-				Message:    msg,
-			}
+			errMsg = parseElevenLabsError(errResp.Detail)
 		}
-		return nil, &APIError{
-			StatusCode: resp.StatusCode,
-			Service:    "elevenlabs",
-			Message:    fmt.Sprintf("ElevenLabs API error: %d", resp.StatusCode),
-		}
+		return nil, apierrors.NewAPIError(resp.StatusCode, "elevenlabs", errMsg)
 	}
 
 	return body, nil

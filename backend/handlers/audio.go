@@ -1,18 +1,18 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
+	apierrors "audio-guide-api/errors"
 	"audio-guide-api/models"
 	"audio-guide-api/services"
 )
 
-// ErrorResponse represents a JSON error response
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
+const requestTimeout = 90 * time.Second
 
 // AudioHandler handles audio generation requests
 type AudioHandler struct {
@@ -42,31 +42,40 @@ func NewAudioHandler() (*AudioHandler, error) {
 func (h *AudioHandler) HandleGenerateAudio(w http.ResponseWriter, r *http.Request) {
 	// Only allow POST method
 	if r.Method != http.MethodPost {
-		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		apierrors.WriteMethodNotAllowed(w)
 		return
 	}
 
 	// Parse request body
 	var attraction models.Attraction
 	if err := json.NewDecoder(r.Body).Decode(&attraction); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid JSON: "+err.Error())
+		apierrors.WriteValidationError(w, "Invalid JSON: "+err.Error())
 		return
 	}
 
 	// Validate attraction data
 	if err := attraction.Validate(); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request: "+err.Error())
+		apierrors.WriteValidationError(w, err.Error())
 		return
 	}
 
-	ctx := r.Context()
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
 
 	// Step 1: Generate facts
 	log.Printf("Generating facts for: %s", attraction.Name)
 	facts, err := h.openAI.GenerateFacts(ctx, &attraction)
 	if err != nil {
 		log.Printf("Error generating facts: %v", err)
-		handleAPIError(w, err)
+		apierrors.WriteErrorResponse(w, err)
+		return
+	}
+
+	// Check context before continuing
+	if ctx.Err() != nil {
+		log.Printf("Request timed out after generating facts")
+		apierrors.WriteErrorResponse(w, ctx.Err())
 		return
 	}
 
@@ -75,7 +84,14 @@ func (h *AudioHandler) HandleGenerateAudio(w http.ResponseWriter, r *http.Reques
 	script, err := h.openAI.GenerateScript(ctx, attraction.Name, facts)
 	if err != nil {
 		log.Printf("Error generating script: %v", err)
-		handleAPIError(w, err)
+		apierrors.WriteErrorResponse(w, err)
+		return
+	}
+
+	// Check context before continuing
+	if ctx.Err() != nil {
+		log.Printf("Request timed out after generating script")
+		apierrors.WriteErrorResponse(w, ctx.Err())
 		return
 	}
 
@@ -84,7 +100,7 @@ func (h *AudioHandler) HandleGenerateAudio(w http.ResponseWriter, r *http.Reques
 	audio, err := h.elevenLabs.GenerateAudio(ctx, script)
 	if err != nil {
 		log.Printf("Error generating audio: %v", err)
-		handleAPIError(w, err)
+		apierrors.WriteErrorResponse(w, err)
 		return
 	}
 
@@ -93,35 +109,4 @@ func (h *AudioHandler) HandleGenerateAudio(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "audio/mpeg")
 	w.WriteHeader(http.StatusOK)
 	w.Write(audio)
-}
-
-func writeError(w http.ResponseWriter, statusCode int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(ErrorResponse{Error: message})
-}
-
-func handleAPIError(w http.ResponseWriter, err error) {
-	apiErr, ok := err.(*services.APIError)
-	if !ok {
-		writeError(w, http.StatusBadGateway, "An unexpected error occurred. Please try again.")
-		return
-	}
-
-	// Map API errors to user-friendly messages
-	var userMessage string
-	switch {
-	case apiErr.StatusCode == 401:
-		userMessage = "Service configuration error. Please try again later."
-	case apiErr.StatusCode == 429:
-		if apiErr.Service == "elevenlabs" {
-			userMessage = "Audio service is busy. Please wait a moment."
-		} else {
-			userMessage = "Service is busy. Please wait a moment and try again."
-		}
-	default:
-		userMessage = "An unexpected error occurred. Please try again."
-	}
-
-	writeError(w, http.StatusBadGateway, userMessage)
 }

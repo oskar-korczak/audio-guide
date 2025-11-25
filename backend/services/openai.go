@@ -8,11 +8,16 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
+	apierrors "audio-guide-api/errors"
 	"audio-guide-api/models"
 )
 
-const openAIEndpoint = "https://api.openai.com/v1/chat/completions"
+const (
+	openAIEndpoint     = "https://api.openai.com/v1/chat/completions"
+	openAITimeout      = 30 * time.Second
+)
 
 type chatMessage struct {
 	Role    string `json:"role"`
@@ -52,7 +57,9 @@ func NewOpenAIService() (*OpenAIService, error) {
 	}
 	return &OpenAIService{
 		apiKey: apiKey,
-		client: &http.Client{},
+		client: &http.Client{
+			Timeout: openAITimeout,
+		},
 	}, nil
 }
 
@@ -90,6 +97,11 @@ Requirements:
 }
 
 func (s *OpenAIService) chatCompletion(ctx context.Context, systemPrompt, userPrompt string, maxTokens int, temperature float64) (string, error) {
+	// Check if context is already done
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+
 	reqBody := chatRequest{
 		Model: "gpt-4o-mini",
 		Messages: []chatMessage{
@@ -115,6 +127,10 @@ func (s *OpenAIService) chatCompletion(ctx context.Context, systemPrompt, userPr
 
 	resp, err := s.client.Do(req)
 	if err != nil {
+		// Check if it was a timeout or cancellation
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
 		return "", fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -126,18 +142,11 @@ func (s *OpenAIService) chatCompletion(ctx context.Context, systemPrompt, userPr
 
 	if resp.StatusCode != http.StatusOK {
 		var errResp chatResponse
+		errMsg := fmt.Sprintf("OpenAI API error: %d", resp.StatusCode)
 		if json.Unmarshal(body, &errResp) == nil && errResp.Error != nil {
-			return "", &APIError{
-				StatusCode: resp.StatusCode,
-				Service:    "openai",
-				Message:    errResp.Error.Message,
-			}
+			errMsg = errResp.Error.Message
 		}
-		return "", &APIError{
-			StatusCode: resp.StatusCode,
-			Service:    "openai",
-			Message:    fmt.Sprintf("OpenAI API error: %d", resp.StatusCode),
-		}
+		return "", apierrors.NewAPIError(resp.StatusCode, "openai", errMsg)
 	}
 
 	var chatResp chatResponse
@@ -150,15 +159,4 @@ func (s *OpenAIService) chatCompletion(ctx context.Context, systemPrompt, userPr
 	}
 
 	return chatResp.Choices[0].Message.Content, nil
-}
-
-// APIError represents an error from an external API
-type APIError struct {
-	StatusCode int
-	Service    string
-	Message    string
-}
-
-func (e *APIError) Error() string {
-	return fmt.Sprintf("%s API error (%d): %s", e.Service, e.StatusCode, e.Message)
 }
