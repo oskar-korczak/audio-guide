@@ -9,10 +9,10 @@ subtasks:
   - "T014"
 title: "Map Display & Tile Loading"
 phase: "Phase 0 - Setup"
-lane: "planned"
-assignee: ""
-agent: ""
-shell_pid: ""
+lane: "for_review"
+assignee: "claude"
+agent: "claude"
+shell_pid: "96814"
 review_status: ""
 reviewed_by: ""
 history:
@@ -258,3 +258,5 @@ console.log('Audio Tour Guide initialized');
 ## Activity Log
 
 - 2025-11-25T18:30:00Z – system – lane=planned – Prompt created via /spec-kitty.tasks
+- 2025-11-25T18:45:00Z – claude – shell_pid=96814 – lane=doing – Started implementation
+- 2025-11-25T18:48:00Z – claude – shell_pid=96814 – lane=for_review – Completed: Map.js with initMap, addTileLayer, getViewport, onViewportChange; debounce.js utility; main.js integration
