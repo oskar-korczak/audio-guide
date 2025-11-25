@@ -8,9 +8,9 @@ subtasks:
   - "T022"
 title: "Frontend Integration"
 phase: "Phase 4 - Integration"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
+agent: "claude"
 shell_pid: ""
 review_status: ""
 reviewed_by: ""
@@ -264,3 +264,4 @@ history:
 ## Activity Log
 
 - 2025-11-25T00:00:00Z – system – lane=planned – Prompt created.
+- 2025-11-25T22:22:49Z – claude – shell_pid= – lane=doing – Started implementation
