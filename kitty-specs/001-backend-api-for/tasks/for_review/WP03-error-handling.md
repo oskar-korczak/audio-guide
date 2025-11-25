@@ -7,7 +7,7 @@ subtasks:
   - "T014"
 title: "Error Handling"
 phase: "Phase 2 - Robustness"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: "claude"
 shell_pid: ""
@@ -189,3 +189,4 @@ history:
 
 - 2025-11-25T00:00:00Z – system – lane=planned – Prompt created.
 - 2025-11-25T22:17:16Z – claude – shell_pid= – lane=doing – Started implementation
+- 2025-11-25T22:20:22Z – claude – shell_pid= – lane=for_review – Completed: Error mapping, timeouts, context handling
