@@ -6,9 +6,9 @@ subtasks:
   - "T017"
 title: "Cloud Run Deployment"
 phase: "Phase 3 - Deployment"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
+agent: "claude"
 shell_pid: ""
 review_status: ""
 reviewed_by: ""
@@ -195,3 +195,4 @@ history:
 ## Activity Log
 
 - 2025-11-25T00:00:00Z – system – lane=planned – Prompt created.
+- 2025-11-25T22:22:28Z – claude – shell_pid= – lane=doing – Started - deployment requires manual gcloud commands
