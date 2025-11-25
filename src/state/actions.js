@@ -1,6 +1,7 @@
 // actions.js - State actions for application logic
 
 import { setState, getState, setAudioStatus, resetAudioState, isAudioReady } from './AppState.js';
+import { rlog } from '../utils/remoteLogger.js';
 import { generateAudioGuide, cleanupAudioGuide } from '../services/audioGuideGenerator.js';
 import { cleanup as cleanupAudio, unlockAudio } from '../services/audio.js';
 import { setMarkerSelected, setMarkerGenerating, removeAttractionMarker, addAttractionMarker } from '../components/AttractionMarker.js';
@@ -15,13 +16,17 @@ let abortController = null;
  * @returns {Promise<Object|null>} Generated audio guide or null if cancelled
  */
 export async function selectAttraction(attraction) {
+  rlog.info('selectAttraction called:', attraction.id);
   const currentState = getState();
 
   // Unlock audio on first interaction (iOS requirement)
-  await unlockAudio();
+  rlog.info('Unlocking audio...');
+  const unlocked = await unlockAudio();
+  rlog.info('Audio unlocked:', unlocked);
 
   // If clicking same attraction that's ready/playing, don't regenerate
   if (currentState.selectedAttractionId === attraction.id && isAudioReady()) {
+    rlog.info('Same attraction already ready, returning existing');
     return currentState.currentAudioGuide;
   }
 
@@ -33,6 +38,7 @@ export async function selectAttraction(attraction) {
 
   // Cancel any in-progress generation
   if (abortController) {
+    rlog.info('Aborting previous generation');
     abortController.abort();
     abortController = null;
   }
@@ -54,14 +60,19 @@ export async function selectAttraction(attraction) {
 
   // Start generation
   abortController = new AbortController();
+  rlog.info('Starting audio generation...');
 
   try {
     const audioGuide = await generateAudioGuide(
       attraction,
-      (status) => setAudioStatus(status),
+      (status) => {
+        rlog.info('Generation status:', status);
+        setAudioStatus(status);
+      },
       abortController.signal
     );
 
+    rlog.info('Generation complete, audioGuide:', !!audioGuide);
     setMarkerGenerating(attraction.id, false);
     setState({ currentAudioGuide: audioGuide });
     setAudioStatus('ready');
@@ -69,10 +80,12 @@ export async function selectAttraction(attraction) {
     return audioGuide;
 
   } catch (error) {
+    rlog.error('Generation error:', error.name, error.message);
     setMarkerGenerating(attraction.id, false);
 
     if (error.name === 'AbortError') {
       // Selection changed, ignore
+      rlog.info('Aborted - selection changed');
       return null;
     }
 
