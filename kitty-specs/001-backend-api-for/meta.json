@@ -1,0 +1,7 @@
+{
+  "feature_number": "001",
+  "slug": "001-backend-api-for",
+  "friendly_name": "Backend API for Audio Generation",
+  "source_description": "Create a backend API with a single endpoint that accepts attraction data (name, category, latitude, longitude) and returns generated audio. Move OpenAI (facts + script generation) and ElevenLabs (audio generation) calls to this backend to secure API keys. Deploy to a free-tier hosting platform. Frontend will call this single endpoint instead of making direct API calls.",
+  "created_at": "2025-11-25T21:43:32Z"
+}

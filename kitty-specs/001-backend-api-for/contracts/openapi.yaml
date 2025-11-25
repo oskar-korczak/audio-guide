@@ -1,0 +1,153 @@
+openapi: 3.0.3
+info:
+  title: Audio Guide API
+  description: Backend API for generating audio guides from attraction data
+  version: 1.0.0
+
+servers:
+  - url: https://audio-guide-api-{hash}-uc.a.run.app
+    description: GCP Cloud Run production
+  - url: http://localhost:8080
+    description: Local development
+
+paths:
+  /generate-audio:
+    post:
+      summary: Generate audio guide for an attraction
+      description: |
+        Accepts attraction data, generates facts and narration script via OpenAI,
+        then converts to audio via ElevenLabs. Returns MP3 audio directly.
+      operationId: generateAudio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Attraction'
+            example:
+              name: "Eiffel Tower"
+              category: "landmark"
+              latitude: 48.8584
+              longitude: 2.2945
+      responses:
+        '200':
+          description: Audio generated successfully
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid request (missing or invalid fields)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid request: name is required"
+        '502':
+          description: Upstream service error (OpenAI or ElevenLabs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Service is busy. Please wait a moment and try again."
+        '504':
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Request timed out. Please try again."
+    options:
+      summary: CORS preflight
+      description: Handles browser CORS preflight requests
+      responses:
+        '204':
+          description: CORS preflight successful
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                example: "*"
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+                example: "POST, OPTIONS"
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+                example: "Content-Type"
+
+  /health:
+    get:
+      summary: Health check
+      description: Returns service health status for monitoring
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "ok"
+
+components:
+  schemas:
+    Attraction:
+      type: object
+      required:
+        - name
+        - category
+        - latitude
+        - longitude
+      properties:
+        name:
+          type: string
+          description: Name of the attraction
+          maxLength: 500
+          example: "Eiffel Tower"
+        category:
+          type: string
+          description: Type of attraction
+          maxLength: 100
+          example: "landmark"
+        latitude:
+          type: number
+          format: double
+          description: Geographic latitude
+          minimum: -90
+          maximum: 90
+          example: 48.8584
+        longitude:
+          type: number
+          format: double
+          description: Geographic longitude
+          minimum: -180
+          maximum: 180
+          example: 2.2945
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: User-friendly error message
+          example: "Service is busy. Please wait a moment and try again."
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          description: Service health status
+          example: "ok"
