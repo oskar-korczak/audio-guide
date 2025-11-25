@@ -37,10 +37,26 @@ function createSpeakerIcon(selected = false) {
  */
 export function addAttractionMarker(map, attraction, onClick) {
   const marker = L.marker([attraction.latitude, attraction.longitude], {
-    icon: createSpeakerIcon(false)
+    icon: createSpeakerIcon(false),
+    interactive: true,
+    bubblingMouseEvents: false
   })
     .addTo(map)
-    .on('click', () => onClick?.(attraction));
+    .on('click', (e) => {
+      L.DomEvent.stopPropagation(e);
+      onClick?.(attraction);
+    });
+
+  // Also handle touch events directly on the DOM element
+  marker.once('add', () => {
+    const el = marker.getElement();
+    if (el) {
+      el.style.pointerEvents = 'auto';
+      el.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+      }, { passive: true });
+    }
+  });
 
   markers.set(attraction.id, marker);
   return marker;
