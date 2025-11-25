@@ -1,0 +1,13 @@
+Topic,Source,Finding,Date
+Leaflet iOS,Leaflet GitHub Issues #6799,Pinch zoom can trigger page zoom; use GestureHandling plugin,2025-11-25
+Leaflet iOS,Leaflet GitHub Issues #8068,iOS 15.4+ controls bug under tile layer,2025-11-25
+Leaflet Mobile,leafletjs.com/examples/mobile,Official mobile tutorial with viewport meta tag,2025-11-25
+Device Orientation,MDN DeviceOrientationEvent,webkitCompassHeading for iOS compass heading,2025-11-25
+Device Orientation,dev.to iOS 13 permissions,requestPermission() required from user gesture,2025-11-25
+Overpass API,wiki.openstreetmap.org,Bounding box format (south west north east),2025-11-25
+Overpass API,dev.overpass-api.de,Rate limiting and timeout configuration,2025-11-25
+iOS Audio,Chrome Developer Blog,Autoplay policy requires user interaction,2025-11-25
+iOS Audio,Stack Overflow #43620594,Blob URLs work on iOS Safari audio element,2025-11-25
+iOS Audio,Stack Overflow #21428326,Base64 data URIs fail on mobile browsers,2025-11-25
+ElevenLabs,ElevenLabs API Docs,POST /v1/text-to-speech/{voice_id} endpoint,2025-11-25
+OpenAI,OpenAI API Docs,Chat completions for content generation,2025-11-25

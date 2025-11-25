@@ -1,0 +1,7 @@
+{
+  "feature_number": "001",
+  "slug": "001-interactive-audio-tour",
+  "friendly_name": "Interactive Audio Tour Guide",
+  "source_description": "create audio guide web app with google maps like interface that works on chrome on ios, displays user in the middle as an arrow including direction, displays nearby tourist attractions on the map as speaker icons, clicking speaker makes requests to search api for facts, generates script, generates audio, and plays it, tested with playwright and playwright mcp, all frontend no backend",
+  "created_at": "2025-11-25T16:44:07Z"
+}

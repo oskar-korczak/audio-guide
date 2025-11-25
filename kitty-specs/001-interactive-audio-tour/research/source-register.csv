@@ -1,0 +1,12 @@
+ID,Type,Title,URL,Accessed
+SRC-001,Documentation,Leaflet Mobile Tutorial,https://leafletjs.com/examples/mobile/,2025-11-25
+SRC-002,GitHub Issue,Leaflet Pinch Zoom Page Issue #6799,https://github.com/Leaflet/Leaflet/issues/6799,2025-11-25
+SRC-003,GitHub Plugin,Leaflet.GestureHandling,https://github.com/elmarquis/Leaflet.GestureHandling,2025-11-25
+SRC-004,MDN,DeviceOrientationEvent,https://developer.mozilla.org/en-US/docs/Web/API/DeviceOrientationEvent,2025-11-25
+SRC-005,Dev.to,iOS 13 Permission Request,https://dev.to/li/how-to-requestpermission-for-devicemotion-and-deviceorientation-events-in-ios-13-46g2,2025-11-25
+SRC-006,Wiki,Overpass API by Example,https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_API_by_Example,2025-11-25
+SRC-007,Wiki,Overpass QL Reference,https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL,2025-11-25
+SRC-008,Chrome Blog,Autoplay Policy,https://developer.chrome.com/blog/autoplay,2025-11-25
+SRC-009,Stack Overflow,iOS Audio Blob,https://stackoverflow.com/questions/43620594/audio-blob-not-working-in-ios-safari,2025-11-25
+SRC-010,API Docs,ElevenLabs TTS,https://docs.elevenlabs.io/api-reference/text-to-speech,2025-11-25
+SRC-011,API Docs,OpenAI Chat Completions,https://platform.openai.com/docs/api-reference/chat,2025-11-25
