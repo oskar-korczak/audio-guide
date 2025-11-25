@@ -1,12 +1,10 @@
 // Map.js - Leaflet map initialization wrapper
 import L from 'leaflet';
-import 'leaflet-gesture-handling';
-import 'leaflet-gesture-handling/dist/leaflet-gesture-handling.css';
 
 let map = null;
 
 /**
- * Initialize the Leaflet map with gesture handling for iOS
+ * Initialize the Leaflet map
  * @param {string} containerId - DOM element ID for the map container
  * @param {Object} options - Map options (center, zoom)
  * @returns {L.Map} The Leaflet map instance
@@ -23,8 +21,8 @@ export function initMap(containerId, options = {}) {
   map = L.map(containerId, {
     center: defaultCenter,
     zoom: defaultZoom,
-    gestureHandling: true,
     tap: true,
+    tapTolerance: 15,
     touchZoom: true,
     dragging: true
   });
