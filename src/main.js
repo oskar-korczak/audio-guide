@@ -7,89 +7,62 @@ import { watchPosition, requestGeolocationPermission } from './services/geolocat
 import { watchOrientation, requestOrientationPermission, isPermissionRequired } from './services/orientation.js';
 import { createUserMarker, updateUserPosition, updateUserHeading } from './components/UserMarker.js';
 import { debouncedLoadAttractions } from './services/attractionsManager.js';
-import { addAttractionMarker, clearAllMarkers, setMarkerSelected } from './components/AttractionMarker.js';
-import { generateAudioGuide, cleanupAudioGuide } from './services/audioGuideGenerator.js';
+import { clearAllMarkers } from './components/AttractionMarker.js';
 import { showGenerationProgress, hideGenerationProgress, showGenerationError } from './components/LoadingIndicator.js';
-import { createAudioPlayer, cleanup as cleanupAudio, unlockAudio } from './services/audio.js';
+import { createAudioPlayer, cleanup as cleanupAudio } from './services/audio.js';
 import { showAudioPlayer, hideAudioPlayer, setPlayingState, setAudioEnded } from './components/AudioPlayer.js';
+import { subscribe, getState, isGenerating, isAudioReady, getSelectedAttraction } from './state/AppState.js';
+import { selectAttraction, cancelSelection, updateAttractions, setAttractionsLoading } from './state/actions.js';
 
 // Initialize map
 const map = initMap('map');
 addTileLayer(map);
 
 let hasInitialLocation = false;
-
-// Audio generation state
-let currentAbortController = null;
-let currentAudioGuide = null;
-let lastSelectedAttraction = null;
-let selectedAttractionId = null;
 let audioPlayer = null;
+let lastSelectedAttraction = null;
 
-/**
- * Cleanup current audio resources
- */
-function cleanupCurrentAudio() {
-  hideAudioPlayer();
-  cleanupAudio();
-  if (currentAudioGuide) {
-    cleanupAudioGuide(currentAudioGuide);
-    currentAudioGuide = null;
+// Subscribe to state changes for UI updates
+subscribe((state) => {
+  // Update generation progress
+  if (isGenerating()) {
+    showGenerationProgress(state.audioStatus);
+  } else {
+    hideGenerationProgress();
   }
-  audioPlayer = null;
-}
+
+  // Update audio player when ready
+  if (isAudioReady() && state.currentAudioGuide && !audioPlayer) {
+    const attraction = getSelectedAttraction();
+    if (attraction) {
+      audioPlayer = createAudioPlayer(state.currentAudioGuide.audioUrl);
+      showAudioPlayer(attraction.name, (isPlaying) => {
+        console.log('Playback state:', isPlaying);
+      });
+      audioPlayer.onEnded(() => {
+        setAudioEnded();
+      });
+    }
+  }
+
+  // Hide audio player when no audio
+  if (!isAudioReady() || !state.currentAudioGuide) {
+    if (audioPlayer) {
+      hideAudioPlayer();
+      audioPlayer = null;
+    }
+  }
+});
 
 /**
- * Handle attraction marker click - start audio generation
+ * Handle attraction marker click - use state management
  */
 async function handleAttractionClick(attraction) {
-  // Unlock audio on first click (iOS requirement)
-  await unlockAudio();
-
-  // Deselect previous marker
-  if (selectedAttractionId !== null) {
-    setMarkerSelected(selectedAttractionId, false);
-  }
-
-  // Select new marker
-  selectedAttractionId = attraction.id;
-  setMarkerSelected(attraction.id, true);
-
-  // Cancel any existing generation
-  if (currentAbortController) {
-    currentAbortController.abort();
-  }
-
-  // Cleanup previous audio
-  cleanupCurrentAudio();
-
   lastSelectedAttraction = attraction;
-  currentAbortController = new AbortController();
+  audioPlayer = null; // Clear reference so subscriber can create new one
 
   try {
-    currentAudioGuide = await generateAudioGuide(
-      attraction,
-      (status) => showGenerationProgress(status),
-      currentAbortController.signal
-    );
-
-    hideGenerationProgress();
-
-    // Create audio player
-    audioPlayer = createAudioPlayer(currentAudioGuide.audioUrl);
-
-    // Show player UI
-    showAudioPlayer(attraction.name, (isPlaying) => {
-      console.log('Playback state:', isPlaying);
-    });
-
-    // Handle audio end
-    audioPlayer.onEnded(() => {
-      setAudioEnded();
-    });
-
-    console.log('Audio ready:', currentAudioGuide.audioUrl);
-
+    await selectAttraction(attraction);
   } catch (error) {
     if (error.name !== 'AbortError') {
       showGenerationError(error);
@@ -99,25 +72,12 @@ async function handleAttractionClick(attraction) {
 
 // Expose cancel function for cancel button
 window.cancelAudioGeneration = () => {
-  if (currentAbortController) {
-    currentAbortController.abort();
-    currentAbortController = null;
-    hideGenerationProgress();
-  }
-
-  // Cleanup audio
-  cleanupCurrentAudio();
-
-  // Deselect marker
-  if (selectedAttractionId !== null) {
-    setMarkerSelected(selectedAttractionId, false);
-    selectedAttractionId = null;
-  }
+  cancelSelection();
 };
 
 // Cleanup on page unload to prevent memory leaks
 window.addEventListener('beforeunload', () => {
-  cleanupCurrentAudio();
+  cancelSelection();
 });
 
 // Expose retry function for retry button
@@ -245,27 +205,29 @@ function handleViewportChange(viewport) {
     viewport.bounds,
     () => {
       showAttractionsLoading();
+      setAttractionsLoading(true);
     },
     (attractions) => {
       hideAttractionsLoading();
-      clearAllMarkers();
+      setAttractionsLoading(false);
 
       if (attractions.length === 0) {
         showNoAttractionsMessage();
+        clearAllMarkers();
         return;
       }
 
       // Limit markers for iOS performance
       const limitedAttractions = attractions.slice(0, 100);
 
-      limitedAttractions.forEach(attraction => {
-        addAttractionMarker(getMap(), attraction, handleAttractionClick);
-      });
+      // Use state management for diff-based marker updates
+      updateAttractions(limitedAttractions, handleAttractionClick);
 
       console.log(`Loaded ${limitedAttractions.length} attractions`);
     },
     (error) => {
       hideAttractionsLoading();
+      setAttractionsLoading(false);
       console.error('Failed to load attractions:', error);
       // Error handling will be enhanced in WP08
     }

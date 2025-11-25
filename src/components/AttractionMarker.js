@@ -85,3 +85,18 @@ export function setMarkerSelected(attractionId, selected) {
 export function getMarkerCount() {
   return markers.size;
 }
+
+/**
+ * Set marker generating state (for animation)
+ * @param {number|string} attractionId - Attraction ID
+ * @param {boolean} generating - Whether generation is in progress
+ */
+export function setMarkerGenerating(attractionId, generating) {
+  const marker = markers.get(attractionId);
+  if (marker) {
+    const el = marker.getElement();
+    if (el) {
+      el.classList.toggle('generating', generating);
+    }
+  }
+}
