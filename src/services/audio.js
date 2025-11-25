@@ -25,7 +25,6 @@ export async function unlockAudio() {
     audio.src = '';
 
     audioUnlocked = true;
-    console.log('Audio unlocked for iOS');
     return true;
   } catch (error) {
     console.warn('Audio unlock failed:', error);

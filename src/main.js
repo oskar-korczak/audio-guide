@@ -43,9 +43,7 @@ subscribe((state) => {
     const attraction = getSelectedAttraction();
     if (attraction) {
       audioPlayer = createAudioPlayer(state.currentAudioGuide.audioUrl);
-      showAudioPlayer(attraction.name, (isPlaying) => {
-        console.log('Playback state:', isPlaying);
-      });
+      showAudioPlayer(attraction.name);
       audioPlayer.onEnded(() => {
         setAudioEnded();
       });
@@ -152,7 +150,7 @@ async function initOrientation() {
   if (isPermissionRequired()) {
     const result = await requestOrientationPermission();
     if (result.status !== 'granted') {
-      console.log('Orientation permission not granted, using static arrow');
+      // Orientation not available - user will see static arrow
       return;
     }
   }
@@ -266,8 +264,6 @@ function handleViewportChange(viewport) {
 
       // Use state management for diff-based marker updates
       updateAttractions(limitedAttractions, handleAttractionClick);
-
-      console.log(`Loaded ${limitedAttractions.length} attractions`);
     },
     (error) => {
       hideAttractionsLoading();
@@ -305,5 +301,3 @@ const initialViewport = getViewport();
 if (initialViewport) {
   handleViewportChange(initialViewport);
 }
-
-console.log('Audio Tour Guide initialized');
