@@ -3,28 +3,34 @@
 import L from 'leaflet';
 
 const markers = new Map();
+const attractionNames = new Map();
 
 /**
- * Create speaker icon for attraction marker
+ * Create speaker icon for attraction marker with label
  * @param {boolean} selected - Whether marker is selected
+ * @param {string} name - Attraction name
  * @returns {L.DivIcon}
  */
-function createSpeakerIcon(selected = false) {
+function createSpeakerIcon(selected = false, name = '') {
+  // Truncate name if too long
+  const displayName = name.length > 20 ? name.slice(0, 18) + '...' : name;
+
   return L.divIcon({
     className: `attraction-marker ${selected ? 'selected' : ''}`,
     html: `
-      <div class="speaker-icon">
-        <svg viewBox="0 0 24 24" width="28" height="28">
-          <path d="M3 9v6h4l5 5V4L7 9H3z" fill="${selected ? '#1a73e8' : '#666'}" />
-          <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"
-                fill="${selected ? '#1a73e8' : '#666'}" />
-          <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
-                fill="${selected ? '#1a73e8' : '#666'}" />
-        </svg>
+      <div class="marker-container">
+        <div class="speaker-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M3 9v6h4l5 5V4L7 9H3z" fill="${selected ? '#1a73e8' : '#666'}" />
+            <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"
+                  fill="${selected ? '#1a73e8' : '#666'}" />
+          </svg>
+        </div>
+        <div class="marker-label">${displayName}</div>
       </div>
     `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14]
+    iconSize: [80, 50],
+    iconAnchor: [40, 20]
   });
 }
 
@@ -37,7 +43,7 @@ function createSpeakerIcon(selected = false) {
  */
 export function addAttractionMarker(map, attraction, onClick) {
   const marker = L.marker([attraction.latitude, attraction.longitude], {
-    icon: createSpeakerIcon(false),
+    icon: createSpeakerIcon(false, attraction.name),
     interactive: true,
     bubblingMouseEvents: false
   })
@@ -59,6 +65,7 @@ export function addAttractionMarker(map, attraction, onClick) {
   });
 
   markers.set(attraction.id, marker);
+  attractionNames.set(attraction.id, attraction.name);
   return marker;
 }
 
@@ -71,6 +78,7 @@ export function removeAttractionMarker(attractionId) {
   if (marker) {
     marker.remove();
     markers.delete(attractionId);
+    attractionNames.delete(attractionId);
   }
 }
 
@@ -80,6 +88,7 @@ export function removeAttractionMarker(attractionId) {
 export function clearAllMarkers() {
   markers.forEach(marker => marker.remove());
   markers.clear();
+  attractionNames.clear();
 }
 
 /**
@@ -89,8 +98,9 @@ export function clearAllMarkers() {
  */
 export function setMarkerSelected(attractionId, selected) {
   const marker = markers.get(attractionId);
+  const name = attractionNames.get(attractionId) || '';
   if (marker) {
-    marker.setIcon(createSpeakerIcon(selected));
+    marker.setIcon(createSpeakerIcon(selected, name));
   }
 }
 
