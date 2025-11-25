@@ -8,7 +8,7 @@ subtasks:
   - "T022"
 title: "Frontend Integration"
 phase: "Phase 4 - Integration"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: "claude"
 shell_pid: ""
@@ -265,3 +265,4 @@ history:
 
 - 2025-11-25T00:00:00Z – system – lane=planned – Prompt created.
 - 2025-11-25T22:22:49Z – claude – shell_pid= – lane=doing – Started implementation
+- 2025-11-25T22:23:58Z – claude – shell_pid= – lane=for_review – Completed: audioApi.js, updated audioGuideGenerator.js, .env.example
