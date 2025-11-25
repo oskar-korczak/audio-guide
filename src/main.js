@@ -65,18 +65,20 @@ subscribe((state) => {
  */
 async function handleAttractionClick(attraction) {
   rlog.info('Attraction clicked:', attraction.name);
-  lastSelectedAttraction = attraction;
-  audioPlayer = null; // Clear reference so subscriber can create new one
-
-  // Start timeout warning
-  startTimeoutWarning(showTimeoutWarning, 30000);
 
   try {
+    lastSelectedAttraction = attraction;
+    audioPlayer = null; // Clear reference so subscriber can create new one
+
+    // Start timeout warning
+    startTimeoutWarning(showTimeoutWarning, 30000);
+
+    rlog.info('Calling selectAttraction...');
     await selectAttraction(attraction);
     rlog.info('Audio generation complete for:', attraction.name);
   } catch (error) {
+    rlog.error('handleAttractionClick error:', error.name, error.message, error.stack);
     if (error.name !== 'AbortError') {
-      rlog.error('Generation failed:', error.message, error.status);
       handleAPIError(error);
     }
   } finally {
