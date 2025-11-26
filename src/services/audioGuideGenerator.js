@@ -1,11 +1,11 @@
 // audioGuideGenerator.js - Orchestrates the audio guide generation pipeline
-// Updated to use backend API instead of direct OpenAI/ElevenLabs calls
+// Now uses backend Cloud Function instead of direct API calls
 
-import { generateAudioGuide as fetchAudioFromBackend } from './audioApi.js';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://us-central1-prompt-compressor-1.cloudfunctions.net/generate-audio';
 
 /**
  * Generate a complete audio guide for an attraction
- * Now uses a single backend call instead of multiple API calls
+ * Calls backend Cloud Function which handles: facts → script → audio
  *
  * @param {Object} attraction - Attraction object
  * @param {Function} onStatusChange - Called with status updates
@@ -16,19 +16,36 @@ export async function generateAudioGuide(attraction, onStatusChange, signal) {
   const result = {
     attractionId: attraction.id,
     attractionName: attraction.name,
-    facts: null,      // No longer available (generated on backend)
-    script: null,     // No longer available (generated on backend)
+    facts: null,
+    script: null,
     audioBlob: null,
     audioUrl: null,
     error: null
   };
 
   try {
-    // Single status for entire backend call
     onStatusChange?.('generating_audio');
 
-    // Call backend API (handles facts → script → audio internally)
-    result.audioBlob = await fetchAudioFromBackend(attraction, signal);
+    const response = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: attraction.name,
+        category: attraction.category || 'attraction',
+        latitude: attraction.lat,
+        longitude: attraction.lon
+      }),
+      signal
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `Backend error: ${response.status}`);
+    }
+
+    result.audioBlob = await response.blob();
     result.audioUrl = URL.createObjectURL(result.audioBlob);
 
     onStatusChange?.('ready');
