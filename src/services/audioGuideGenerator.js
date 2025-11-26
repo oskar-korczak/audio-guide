@@ -1,11 +1,11 @@
 // audioGuideGenerator.js - Orchestrates the audio guide generation pipeline
+// Now uses backend Cloud Function instead of direct API calls
 
-import { generateFacts, generateScript } from './openai.js';
-import { generateAudio } from './elevenlabs.js';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://us-central1-prompt-compressor-1.cloudfunctions.net/generate-audio';
 
 /**
  * Generate a complete audio guide for an attraction
- * Pipeline: attraction → facts → script → audio
+ * Calls backend Cloud Function which handles: facts → script → audio
  *
  * @param {Object} attraction - Attraction object
  * @param {Function} onStatusChange - Called with status updates
@@ -24,27 +24,28 @@ export async function generateAudioGuide(attraction, onStatusChange, signal) {
   };
 
   try {
-    // Step 1: Generate facts
-    onStatusChange?.('fetching_facts');
-    result.facts = await generateFacts(attraction, signal);
-
-    // Check for cancellation
-    if (signal?.aborted) {
-      throw new DOMException('Aborted', 'AbortError');
-    }
-
-    // Step 2: Generate script
-    onStatusChange?.('generating_script');
-    result.script = await generateScript(attraction.name, result.facts, signal);
-
-    // Check for cancellation
-    if (signal?.aborted) {
-      throw new DOMException('Aborted', 'AbortError');
-    }
-
-    // Step 3: Generate audio
     onStatusChange?.('generating_audio');
-    result.audioBlob = await generateAudio(result.script, signal);
+
+    const response = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: attraction.name,
+        category: attraction.category || 'attraction',
+        latitude: attraction.lat,
+        longitude: attraction.lon
+      }),
+      signal
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `Backend error: ${response.status}`);
+    }
+
+    result.audioBlob = await response.blob();
     result.audioUrl = URL.createObjectURL(result.audioBlob);
 
     onStatusChange?.('ready');
