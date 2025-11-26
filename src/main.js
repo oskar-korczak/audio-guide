@@ -34,7 +34,7 @@ let lastSelectedAttraction = null;
 subscribe((state) => {
   // Update generation progress
   if (isGenerating()) {
-    showGenerationProgress(state.audioStatus);
+    showGenerationProgress();
   } else {
     hideGenerationProgress();
   }

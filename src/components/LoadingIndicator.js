@@ -1,24 +1,59 @@
-// LoadingIndicator.js - Multi-step progress indicator for audio generation
+// LoadingIndicator.js - Progress bar indicator for audio generation
 
-const STEPS = {
-  fetching_facts: { label: 'Finding interesting facts...', step: 1 },
-  generating_script: { label: 'Writing your audio guide...', step: 2 },
-  generating_audio: { label: 'Generating audio...', step: 3 }
-};
+const TOTAL_DURATION = 22000; // 22 seconds total
+
+const STAGES = [
+  { at: 0, label: 'Researching...' },
+  { at: 0.25, label: 'Generating script...' },
+  { at: 0.55, label: 'Synthesizing voice...' },
+  { at: 0.85, label: 'Finalizing...' }
+];
 
 let indicatorElement = null;
+let animationFrame = null;
+let startTime = null;
 
 /**
- * Show generation progress with current step
- * @param {string} status - Current status (fetching_facts, generating_script, generating_audio)
+ * Get the current stage label based on progress
  */
-export function showGenerationProgress(status) {
-  const stepInfo = STEPS[status];
-  if (!stepInfo) {
-    hideGenerationProgress();
-    return;
+function getStageLabel(progress) {
+  let label = STAGES[0].label;
+  for (const stage of STAGES) {
+    if (progress >= stage.at) {
+      label = stage.label;
+    }
+  }
+  return label;
+}
+
+/**
+ * Update the progress bar animation
+ */
+function updateProgress() {
+  if (!indicatorElement || !startTime) return;
+
+  const elapsed = Date.now() - startTime;
+  const progress = Math.min(elapsed / TOTAL_DURATION, 0.95); // Cap at 95% until done
+
+  const progressBar = indicatorElement.querySelector('.progress-fill');
+  const labelEl = indicatorElement.querySelector('.progress-label');
+
+  if (progressBar) {
+    progressBar.style.width = `${progress * 100}%`;
+  }
+  if (labelEl) {
+    labelEl.textContent = getStageLabel(progress);
   }
 
+  if (progress < 0.95) {
+    animationFrame = requestAnimationFrame(updateProgress);
+  }
+}
+
+/**
+ * Show generation progress with animated progress bar
+ */
+export function showGenerationProgress() {
   if (!indicatorElement) {
     indicatorElement = document.createElement('div');
     indicatorElement.className = 'generation-progress';
@@ -26,24 +61,27 @@ export function showGenerationProgress(status) {
   }
 
   indicatorElement.innerHTML = `
-    <div class="progress-steps">
-      ${Object.entries(STEPS).map(([key, info]) => `
-        <div class="step ${info.step <= stepInfo.step ? 'active' : ''} ${key === status ? 'current' : ''}">
-          <span class="step-number">${info.step}</span>
-        </div>
-      `).join('')}
+    <div class="progress-bar-container">
+      <div class="progress-fill"></div>
     </div>
-    <div class="progress-label">${stepInfo.label}</div>
+    <div class="progress-label">${STAGES[0].label}</div>
     <button class="cancel-btn" onclick="window.cancelAudioGeneration?.()">Cancel</button>
   `;
 
   indicatorElement.style.display = 'block';
+  startTime = Date.now();
+  updateProgress();
 }
 
 /**
  * Hide the generation progress indicator
  */
 export function hideGenerationProgress() {
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+    animationFrame = null;
+  }
+  startTime = null;
   if (indicatorElement) {
     indicatorElement.style.display = 'none';
   }

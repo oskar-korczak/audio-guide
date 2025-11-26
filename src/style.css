@@ -186,38 +186,21 @@ html, body {
   display: none;
 }
 
-.progress-steps {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
   margin-bottom: 12px;
 }
 
-.step {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #e0e0e0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: #999;
-  transition: all 0.3s ease;
-}
-
-.step.active {
-  background: #4285f4;
-  color: white;
-}
-
-.step.current {
-  animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4285f4, #34a853);
+  border-radius: 4px;
+  width: 0%;
+  transition: width 0.1s linear;
 }
 
 .progress-label {
