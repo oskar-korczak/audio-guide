@@ -10,3 +10,6 @@
 .augment/
 .roo/
 .amazonq/
+
+# Environment files
+.env

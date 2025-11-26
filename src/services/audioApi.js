@@ -1,7 +1,7 @@
 // audioApi.js - Backend API client for audio generation
 // This replaces direct calls to openai.js and elevenlabs.js
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://us-central1-prompt-compressor-1.cloudfunctions.net/generate-audio';
 
 /**
  * Generate audio guide from attraction data
@@ -10,7 +10,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
  * @returns {Promise<Blob>} MP3 audio blob
  */
 export async function generateAudioGuide(attraction, signal) {
-  const response = await fetch(`${BACKEND_URL}/generate-audio`, {
+  const response = await fetch(BACKEND_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -30,21 +30,6 @@ export async function generateAudioGuide(attraction, signal) {
   }
 
   return response.blob();
-}
-
-/**
- * Check backend health
- * @returns {Promise<boolean>} true if backend is healthy
- */
-export async function checkHealth() {
-  try {
-    const response = await fetch(`${BACKEND_URL}/health`);
-    if (!response.ok) return false;
-    const data = await response.json();
-    return data.status === 'ok';
-  } catch {
-    return false;
-  }
 }
 
 export { BACKEND_URL };
