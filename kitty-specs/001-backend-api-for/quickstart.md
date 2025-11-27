@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Go 1.21+
+- Go 1.23+
 - GCP account with billing enabled
 - `gcloud` CLI installed and authenticated
 - OpenAI API key

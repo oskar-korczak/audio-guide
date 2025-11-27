@@ -9,7 +9,7 @@ Create a Go backend API deployed on GCP Cloud Run that accepts attraction data (
 
 ## Technical Context
 
-**Language/Version**: Go 1.21+
+**Language/Version**: Go 1.23+
 **Primary Dependencies**: net/http (stdlib), OpenAI API client, ElevenLabs API (HTTP)
 **Storage**: N/A (stateless, no persistence)
 **Testing**: go test (stdlib)

@@ -23,7 +23,7 @@
 - [ ] T003 [P] Create `backend/Dockerfile` for Cloud Run
 
 ### Implementation Notes
-- Use Go 1.21+
+- Use Go 1.23+
 - Use `net/http` stdlib only (no external frameworks)
 - Dockerfile should use multi-stage build for smaller image
 - Server listens on `PORT` env var (Cloud Run requirement)

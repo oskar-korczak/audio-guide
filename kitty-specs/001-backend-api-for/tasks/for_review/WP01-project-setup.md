@@ -40,14 +40,14 @@ history:
 
 ## Objectives & Success Criteria
 
-- Initialize a Go 1.21+ module in `backend/` directory
+- Initialize a Go 1.23+ module in `backend/` directory
 - Create HTTP server skeleton that listens on `PORT` environment variable
 - Create Dockerfile for GCP Cloud Run deployment
 - **Success**: `go build` succeeds; `docker build` succeeds
 
 ## Context & Constraints
 
-- **Tech Stack**: Go 1.21+, stdlib `net/http` only
+- **Tech Stack**: Go 1.23+, stdlib `net/http` only
 - **Target**: GCP Cloud Run (serverless container)
 - **Reference**: `kitty-specs/001-backend-api-for/plan.md` for project structure
 - **Reference**: `kitty-specs/001-backend-api-for/research.md` for Cloud Run config
@@ -65,7 +65,7 @@ Cloud Run requirements:
 - **Steps**:
   1. Create `backend/` directory at repository root
   2. Run `go mod init audio-guide-api` inside `backend/`
-  3. Verify `go.mod` exists with Go 1.21+
+  3. Verify `go.mod` exists with Go 1.23+
 - **Files**:
   - Create: `backend/go.mod`
 - **Parallel?**: No (must be first)
@@ -131,7 +131,7 @@ Cloud Run requirements:
   - Example Dockerfile:
     ```dockerfile
     # Build stage
-    FROM golang:1.21-alpine AS builder
+    FROM golang:1.23-alpine AS builder
     WORKDIR /app
     COPY go.mod ./
     RUN go mod download
@@ -151,13 +151,13 @@ Cloud Run requirements:
 
 | Risk | Mitigation |
 |------|------------|
-| Go version mismatch | Specify `go 1.21` in go.mod |
+| Go version mismatch | Specify `go 1.23` in go.mod |
 | Docker build fails | Test locally before WP02 |
 | PORT not read correctly | Test with `PORT=3000 go run main.go` |
 
 ## Definition of Done Checklist
 
-- [ ] `backend/go.mod` exists with Go 1.21+
+- [ ] `backend/go.mod` exists with Go 1.23+
 - [ ] `backend/main.go` compiles without errors
 - [ ] Server starts and listens on PORT env var
 - [ ] `docker build` succeeds

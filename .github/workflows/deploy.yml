@@ -32,7 +32,7 @@ jobs:
         run: |
           gcloud functions deploy generate-audio \
             --gen2 \
-            --runtime=go122 \
+            --runtime=go123 \
             --region=us-central1 \
             --source=./function \
             --entry-point=GenerateAudio \
