@@ -80,8 +80,8 @@ func (h *AudioHandler) HandleGenerateAudio(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Step 2: Generate script
-	log.Printf("Generating script for: %s", attraction.Name)
-	script, err := h.openAI.GenerateScript(ctx, attraction.Name, facts)
+	log.Printf("Generating script for: %s in %s", attraction.Name, attraction.Language)
+	script, err := h.openAI.GenerateScript(ctx, attraction.Name, facts, attraction.Language)
 	if err != nil {
 		log.Printf("Error generating script: %v", err)
 		apierrors.WriteErrorResponse(w, err)

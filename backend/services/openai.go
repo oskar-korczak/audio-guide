@@ -65,7 +65,7 @@ func NewOpenAIService() (*OpenAIService, error) {
 
 // GenerateFacts generates interesting facts about an attraction
 func (s *OpenAIService) GenerateFacts(ctx context.Context, attraction *models.Attraction) (string, error) {
-	systemPrompt := "You are a knowledgeable tour guide with expertise in history, architecture, and culture. Provide accurate, engaging facts suitable for tourists."
+	systemPrompt := fmt.Sprintf("You are a knowledgeable tour guide with expertise in history, architecture, and culture. Provide accurate, engaging facts suitable for tourists. Write your response entirely in %s.", attraction.Language)
 
 	userPrompt := fmt.Sprintf(`Provide 3-5 interesting facts about "%s" (%s) located at coordinates %f, %f. Focus on:
 - Historical significance
@@ -73,14 +73,14 @@ func (s *OpenAIService) GenerateFacts(ctx context.Context, attraction *models.At
 - Cultural importance
 - Interesting stories or legends
 
-Be concise but engaging. Each fact should be 1-2 sentences.`, attraction.Name, attraction.Category, attraction.Latitude, attraction.Longitude)
+Be concise but engaging. Each fact should be 1-2 sentences. Write in %s.`, attraction.Name, attraction.Category, attraction.Latitude, attraction.Longitude, attraction.Language)
 
 	return s.chatCompletion(ctx, systemPrompt, userPrompt, 500, 0.7)
 }
 
 // GenerateScript generates a TTS-optimized narration script from facts
-func (s *OpenAIService) GenerateScript(ctx context.Context, attractionName string, facts string) (string, error) {
-	systemPrompt := "You are a professional audio guide scriptwriter. Write natural, conversational scripts for text-to-speech narration. Avoid visual references like \"as you can see\". Use clear pronunciation-friendly language."
+func (s *OpenAIService) GenerateScript(ctx context.Context, attractionName string, facts string, language string) (string, error) {
+	systemPrompt := fmt.Sprintf("You are a professional audio guide scriptwriter. Write natural, conversational scripts for text-to-speech narration. Avoid visual references like \"as you can see\". Use clear pronunciation-friendly language. Write entirely in %s.", language)
 
 	userPrompt := fmt.Sprintf(`Write a 30-60 second audio guide script for "%s" based on these facts:
 
@@ -91,7 +91,8 @@ Requirements:
 - Share 2-3 of the most interesting facts naturally
 - Use conversational, engaging language
 - End with an invitation to explore or take photos
-- Keep it between 80-150 words for optimal audio length`, attractionName, facts)
+- Keep it between 80-150 words for optimal audio length
+- Write the entire script in %s`, attractionName, facts, language)
 
 	return s.chatCompletion(ctx, systemPrompt, userPrompt, 300, 0.8)
 }

@@ -65,7 +65,7 @@ func (s *ElevenLabsService) GenerateAudio(ctx context.Context, script string) ([
 
 	reqBody := ttsRequest{
 		Text:    script,
-		ModelID: "eleven_monolingual_v1",
+		ModelID: "eleven_multilingual_v2",
 		VoiceSettings: voiceSettings{
 			Stability:       0.5,
 			SimilarityBoost: 0.75,

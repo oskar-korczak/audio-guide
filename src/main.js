@@ -12,7 +12,7 @@ import { clearAllMarkers } from './components/AttractionMarker.js';
 import { showGenerationProgress, hideGenerationProgress, showGenerationError } from './components/LoadingIndicator.js';
 import { createAudioPlayer, cleanup as cleanupAudio } from './services/audio.js';
 import { showAudioPlayer, hideAudioPlayer, setPlayingState, setAudioEnded } from './components/AudioPlayer.js';
-import { subscribe, getState, isGenerating, isAudioReady, getSelectedAttraction } from './state/AppState.js';
+import { subscribe, getState, isGenerating, isAudioReady, getSelectedAttraction, setSelectedLanguage, getSelectedLanguage } from './state/AppState.js';
 import { selectAttraction, cancelSelection, updateAttractions, setAttractionsLoading } from './state/actions.js';
 import { initErrorBoundary } from './utils/errorBoundary.js';
 import { initNetworkDetection } from './utils/network.js';
@@ -25,6 +25,78 @@ initNetworkDetection();
 // Initialize map
 const map = initMap('map');
 addTileLayer(map);
+
+// Initialize language selector
+initLanguageSelector();
+
+/**
+ * Initialize the language selector UI
+ */
+function initLanguageSelector() {
+  const container = document.createElement('div');
+  container.id = 'language-selector';
+  container.className = 'language-selector';
+
+  const select = document.createElement('select');
+  select.id = 'language-dropdown';
+
+  const languages = [
+    { value: 'English', label: 'English' },
+    { value: 'Polski', label: 'Polski' },
+    { value: 'custom', label: 'Other...' }
+  ];
+
+  languages.forEach(lang => {
+    const option = document.createElement('option');
+    option.value = lang.value;
+    option.textContent = lang.label;
+    select.appendChild(option);
+  });
+
+  const customInput = document.createElement('input');
+  customInput.id = 'custom-language';
+  customInput.type = 'text';
+  customInput.placeholder = 'e.g. Spanish, German';
+
+  // Set initial value from state
+  const savedLanguage = getSelectedLanguage();
+  if (savedLanguage === 'English' || savedLanguage === 'Polski') {
+    select.value = savedLanguage;
+  } else {
+    select.value = 'custom';
+    customInput.value = savedLanguage;
+    customInput.classList.add('visible');
+  }
+
+  // Handle dropdown change
+  select.addEventListener('change', () => {
+    if (select.value === 'custom') {
+      customInput.classList.add('visible');
+      customInput.focus();
+    } else {
+      customInput.classList.remove('visible');
+      setSelectedLanguage(select.value);
+    }
+  });
+
+  // Handle custom input
+  customInput.addEventListener('blur', () => {
+    const value = customInput.value.trim();
+    if (value) {
+      setSelectedLanguage(value);
+    }
+  });
+
+  customInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      customInput.blur();
+    }
+  });
+
+  container.appendChild(select);
+  container.appendChild(customInput);
+  document.body.appendChild(container);
+}
 
 let hasInitialLocation = false;
 let audioPlayer = null;

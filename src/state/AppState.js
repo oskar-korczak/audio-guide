@@ -11,7 +11,8 @@ const state = {
   currentAudioGuide: null,
   audioStatus: 'idle', // idle | fetching_facts | generating_script | generating_audio | ready | playing | paused | error
   isLoadingAttractions: false,
-  error: null
+  error: null,
+  selectedLanguage: localStorage.getItem('audioGuideLanguage') || 'English'
 };
 
 const listeners = new Set();
@@ -112,4 +113,21 @@ export function isGenerating() {
  */
 export function isAudioReady() {
   return ['ready', 'playing', 'paused'].includes(state.audioStatus);
+}
+
+/**
+ * Set the selected language and persist to localStorage
+ * @param {string} language - Language name (e.g., "English", "Polski", "Spanish")
+ */
+export function setSelectedLanguage(language) {
+  localStorage.setItem('audioGuideLanguage', language);
+  setState({ selectedLanguage: language });
+}
+
+/**
+ * Get the currently selected language
+ * @returns {string} Selected language
+ */
+export function getSelectedLanguage() {
+  return state.selectedLanguage;
 }

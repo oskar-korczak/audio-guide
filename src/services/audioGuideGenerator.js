@@ -1,6 +1,8 @@
 // audioGuideGenerator.js - Orchestrates the audio guide generation pipeline
 // Now uses backend Cloud Function instead of direct API calls
 
+import { getSelectedLanguage } from '../state/AppState.js';
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://us-central1-prompt-compressor-1.cloudfunctions.net/generate-audio';
 
 /**
@@ -35,7 +37,8 @@ export async function generateAudioGuide(attraction, onStatusChange, signal) {
         name: attraction.name,
         category: attraction.category || 'attraction',
         latitude: attraction.lat,
-        longitude: attraction.lon
+        longitude: attraction.lon,
+        language: getSelectedLanguage()
       }),
       signal
     });

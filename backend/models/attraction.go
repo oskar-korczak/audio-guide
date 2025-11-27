@@ -11,6 +11,7 @@ type Attraction struct {
 	Category  string  `json:"category"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
+	Language  string  `json:"language"`
 }
 
 // Validate checks if the attraction data is valid
@@ -41,6 +42,15 @@ func (a *Attraction) Validate() error {
 	// Validate longitude
 	if a.Longitude < -180 || a.Longitude > 180 {
 		return errors.New("longitude must be between -180 and 180")
+	}
+
+	// Set default language if not provided
+	a.Language = strings.TrimSpace(a.Language)
+	if a.Language == "" {
+		a.Language = "English"
+	}
+	if len(a.Language) > 50 {
+		return errors.New("language must be at most 50 characters")
 	}
 
 	return nil
