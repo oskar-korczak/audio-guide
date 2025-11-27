@@ -33,6 +33,7 @@ type Attraction struct {
 	Category  string  `json:"category"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
+	Language  string  `json:"language"`
 }
 
 func (a *Attraction) Validate() error {
@@ -58,6 +59,15 @@ func (a *Attraction) Validate() error {
 
 	if a.Longitude < -180 || a.Longitude > 180 {
 		return errors.New("longitude must be between -180 and 180")
+	}
+
+	// Set default language if not provided
+	a.Language = strings.TrimSpace(a.Language)
+	if a.Language == "" {
+		a.Language = "English"
+	}
+	if len(a.Language) > 50 {
+		return errors.New("language must be at most 50 characters")
 	}
 
 	return nil
@@ -110,7 +120,7 @@ func GenerateAudio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate script
-	script, err := generateScript(ctx, openAIKey, attraction.Name, facts)
+	script, err := generateScript(ctx, openAIKey, attraction.Name, facts, attraction.Language)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "Failed to generate script")
 		return
@@ -156,20 +166,20 @@ type chatResponse struct {
 }
 
 func generateFacts(ctx context.Context, apiKey string, attraction *Attraction) (string, error) {
-	systemPrompt := "You are a knowledgeable tour guide with expertise in history, architecture, and culture. Provide accurate, engaging facts suitable for tourists."
+	systemPrompt := fmt.Sprintf("You are a knowledgeable tour guide with expertise in history, architecture, and culture. Provide accurate, engaging facts suitable for tourists. Write your response entirely in %s.", attraction.Language)
 	userPrompt := fmt.Sprintf(`Provide 3-5 interesting facts about "%s" (%s) located at coordinates %f, %f. Focus on:
 - Historical significance
 - Architectural features
 - Cultural importance
 - Interesting stories or legends
 
-Be concise but engaging. Each fact should be 1-2 sentences.`, attraction.Name, attraction.Category, attraction.Latitude, attraction.Longitude)
+Be concise but engaging. Each fact should be 1-2 sentences. Write in %s.`, attraction.Name, attraction.Category, attraction.Latitude, attraction.Longitude, attraction.Language)
 
 	return chatCompletion(ctx, apiKey, systemPrompt, userPrompt, 500, 0.7)
 }
 
-func generateScript(ctx context.Context, apiKey, attractionName, facts string) (string, error) {
-	systemPrompt := "You are a professional audio guide scriptwriter. Write natural, conversational scripts for text-to-speech narration. Avoid visual references like \"as you can see\". Use clear pronunciation-friendly language."
+func generateScript(ctx context.Context, apiKey, attractionName, facts, language string) (string, error) {
+	systemPrompt := fmt.Sprintf("You are a professional audio guide scriptwriter. Write natural, conversational scripts for text-to-speech narration. Avoid visual references like \"as you can see\". Use clear pronunciation-friendly language. Write entirely in %s.", language)
 	userPrompt := fmt.Sprintf(`Write a 30-60 second audio guide script for "%s" based on these facts:
 
 %s
@@ -179,7 +189,8 @@ Requirements:
 - Share 2-3 of the most interesting facts naturally
 - Use conversational, engaging language
 - End with an invitation to explore or take photos
-- Keep it between 80-150 words for optimal audio length`, attractionName, facts)
+- Keep it between 80-150 words for optimal audio length
+- Write the entire script in %s`, attractionName, facts, language)
 
 	return chatCompletion(ctx, apiKey, systemPrompt, userPrompt, 300, 0.8)
 }
@@ -249,7 +260,7 @@ type ttsRequest struct {
 func generateAudioTTS(ctx context.Context, apiKey, script string) ([]byte, error) {
 	reqBody := ttsRequest{
 		Text:    script,
-		ModelID: "eleven_monolingual_v1",
+		ModelID: "eleven_multilingual_v2",
 		VoiceSettings: voiceSettings{
 			Stability:       0.5,
 			SimilarityBoost: 0.75,
