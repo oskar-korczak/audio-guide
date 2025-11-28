@@ -524,6 +524,52 @@ html, body {
   color: #333;
 }
 
+/* Warning toast (informational, non-error) */
+.warning-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 20px;
+  right: 20px;
+  background: white;
+  border-left: 4px solid #ffa726;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1500;
+  animation: slideUp 0.3s ease;
+}
+
+.warning-toast-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.warning-toast-content {
+  flex: 1;
+}
+
+.warning-toast-message {
+  font-size: 13px;
+  color: #666;
+}
+
+.warning-toast .dismiss-btn {
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+}
+
+.warning-toast .dismiss-btn:hover {
+  color: #333;
+}
+
 /* Language selector */
 .language-selector {
   position: fixed;

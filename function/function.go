@@ -36,6 +36,29 @@ type Attraction struct {
 	Language  string  `json:"language"`
 }
 
+// Location represents reverse geocoded location data
+type Location struct {
+	Country      string
+	City         string
+	Street       string
+	Neighborhood string
+	Valid        bool // false if geocoding failed
+}
+
+// nominatimResponse represents the Nominatim API response
+type nominatimResponse struct {
+	Address struct {
+		Road         string `json:"road"`
+		Street       string `json:"street"`
+		City         string `json:"city"`
+		Town         string `json:"town"`
+		Village      string `json:"village"`
+		Suburb       string `json:"suburb"`
+		Neighbourhood string `json:"neighbourhood"`
+		Country      string `json:"country"`
+	} `json:"address"`
+}
+
 func (a *Attraction) Validate() error {
 	a.Name = strings.TrimSpace(a.Name)
 	if a.Name == "" {
@@ -73,12 +96,74 @@ func (a *Attraction) Validate() error {
 	return nil
 }
 
+const nominatimEndpoint = "https://nominatim.openstreetmap.org/reverse"
+
+// reverseGeocode converts coordinates to human-readable location using Nominatim API
+func reverseGeocode(ctx context.Context, lat, lon float64) Location {
+	url := fmt.Sprintf("%s?lat=%f&lon=%f&format=json", nominatimEndpoint, lat, lon)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return Location{Valid: false}
+	}
+
+	// Nominatim requires a User-Agent header
+	req.Header.Set("User-Agent", "AudioGuide/1.0 (audio-guide-app)")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return Location{Valid: false}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return Location{Valid: false}
+	}
+
+	var nomResp nominatimResponse
+	if err := json.NewDecoder(resp.Body).Decode(&nomResp); err != nil {
+		return Location{Valid: false}
+	}
+
+	loc := Location{
+		Country: nomResp.Address.Country,
+		Valid:   true,
+	}
+
+	// Get city (could be city, town, or village)
+	if nomResp.Address.City != "" {
+		loc.City = nomResp.Address.City
+	} else if nomResp.Address.Town != "" {
+		loc.City = nomResp.Address.Town
+	} else if nomResp.Address.Village != "" {
+		loc.City = nomResp.Address.Village
+	}
+
+	// Get street (could be road or street)
+	if nomResp.Address.Road != "" {
+		loc.Street = nomResp.Address.Road
+	} else if nomResp.Address.Street != "" {
+		loc.Street = nomResp.Address.Street
+	}
+
+	// Get neighborhood
+	if nomResp.Address.Suburb != "" {
+		loc.Neighborhood = nomResp.Address.Suburb
+	} else if nomResp.Address.Neighbourhood != "" {
+		loc.Neighborhood = nomResp.Address.Neighbourhood
+	}
+
+	return loc
+}
+
 // GenerateAudio is the Cloud Function entry point
 func GenerateAudio(w http.ResponseWriter, r *http.Request) {
 	// CORS headers
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Expose-Headers", "X-Location-Warning")
 
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusNoContent)
@@ -112,8 +197,16 @@ func GenerateAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Reverse geocode to get location context
+	location := reverseGeocode(ctx, attraction.Latitude, attraction.Longitude)
+
+	// Set warning header if geocoding failed
+	if !location.Valid {
+		w.Header().Set("X-Location-Warning", "Location details unavailable - information may be less accurate")
+	}
+
 	// Generate facts
-	facts, err := generateFacts(ctx, openAIKey, &attraction)
+	facts, err := generateFacts(ctx, openAIKey, &attraction, &location)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "Failed to generate facts")
 		return
@@ -165,21 +258,65 @@ type chatResponse struct {
 	} `json:"choices"`
 }
 
-func generateFacts(ctx context.Context, apiKey string, attraction *Attraction) (string, error) {
+func generateFacts(ctx context.Context, apiKey string, attraction *Attraction, location *Location) (string, error) {
 	systemPrompt := fmt.Sprintf("You are a knowledgeable tour guide with expertise in history, architecture, and culture. Provide accurate, engaging facts suitable for tourists. Write your response entirely in %s.", attraction.Language)
-	userPrompt := fmt.Sprintf(`Provide 3-5 interesting facts about "%s" (%s) located at coordinates %f, %f. Focus on:
-- Historical significance
-- Architectural features
-- Cultural importance
-- Interesting stories or legends
 
-Be concise but engaging. Each fact should be 1-2 sentences. Write in %s.`, attraction.Name, attraction.Category, attraction.Latitude, attraction.Longitude, attraction.Language)
+	// Build location string
+	var locationParts []string
+	if location.Valid {
+		if location.Street != "" {
+			locationParts = append(locationParts, location.Street)
+		}
+		if location.Neighborhood != "" {
+			locationParts = append(locationParts, location.Neighborhood)
+		}
+		if location.City != "" {
+			locationParts = append(locationParts, location.City)
+		}
+		if location.Country != "" {
+			locationParts = append(locationParts, location.Country)
+		}
+	}
+
+	var locationInfo string
+	if len(locationParts) > 0 {
+		locationInfo = fmt.Sprintf("Location: %s\n", strings.Join(locationParts, ", "))
+	} else {
+		locationInfo = fmt.Sprintf("Coordinates: %f, %f\n", attraction.Latitude, attraction.Longitude)
+	}
+
+	userPrompt := fmt.Sprintf(`Provide 3-5 truly fascinating facts about "%s" (%s).
+
+%s
+Focus on:
+- Surprising or little-known facts that most visitors wouldn't know
+- Unique historical events or stories connected to this place
+- Interesting architectural or design details with specific context
+- Cultural significance and local traditions
+- Notable people or events associated with this location
+
+Avoid:
+- Generic information easily found in any guidebook
+- Obvious facts about the category (e.g., "this museum has art")
+- Vague statements without specific details
+
+Each fact should make the visitor say "I didn't know that!" Be concise but engaging. Each fact should be 1-2 sentences. Write entirely in %s.`, attraction.Name, attraction.Category, locationInfo, attraction.Language)
 
 	return chatCompletion(ctx, apiKey, systemPrompt, userPrompt, 500, 0.7)
 }
 
 func generateScript(ctx context.Context, apiKey, attractionName, facts, language string) (string, error) {
-	systemPrompt := fmt.Sprintf("You are a professional audio guide scriptwriter. Write natural, conversational scripts for text-to-speech narration. Avoid visual references like \"as you can see\". Use clear pronunciation-friendly language. Write entirely in %s.", language)
+	systemPrompt := fmt.Sprintf(`You are a professional audio guide scriptwriter. Write natural, conversational scripts for text-to-speech narration. Avoid visual references like "as you can see". Write entirely in %s.
+
+CRITICAL TEXT-TO-SPEECH REQUIREMENTS:
+- Write ALL numbers as words (e.g., "eighteen eighty-nine" not "1889", "three hundred" not "300")
+- Write dates in full words (e.g., "the fifteenth of March, nineteen twenty-one" not "March 15, 1921")
+- Write ordinals as words (e.g., "nineteenth century" not "19th century", "the third floor" not "the 3rd floor")
+- Expand ALL abbreviations (e.g., "Saint" not "St.", "Doctor" not "Dr.", "Mister" not "Mr.")
+- Spell out acronyms or explain them (e.g., "UNESCO, the United Nations cultural organization")
+- Avoid special characters and symbols
+- Use phonetic-friendly phrasing for foreign or difficult words`, language)
+
 	userPrompt := fmt.Sprintf(`Write a 30-60 second audio guide script for "%s" based on these facts:
 
 %s
@@ -190,7 +327,8 @@ Requirements:
 - Use conversational, engaging language
 - End with an invitation to explore or take photos
 - Keep it between 80-150 words for optimal audio length
-- Write the entire script in %s`, attractionName, facts, language)
+- Write the entire script in %s
+- IMPORTANT: All numbers, dates, and abbreviations must be written as full words for text-to-speech`, attractionName, facts, language)
 
 	return chatCompletion(ctx, apiKey, systemPrompt, userPrompt, 300, 0.8)
 }

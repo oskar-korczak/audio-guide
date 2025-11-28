@@ -22,7 +22,8 @@ export async function generateAudioGuide(attraction, onStatusChange, signal) {
     script: null,
     audioBlob: null,
     audioUrl: null,
-    error: null
+    error: null,
+    locationWarning: null
   };
 
   try {
@@ -46,6 +47,12 @@ export async function generateAudioGuide(attraction, onStatusChange, signal) {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
       throw new Error(error.error || `Backend error: ${response.status}`);
+    }
+
+    // Check for location warning header
+    const locationWarning = response.headers.get('X-Location-Warning');
+    if (locationWarning) {
+      result.locationWarning = locationWarning;
     }
 
     result.audioBlob = await response.blob();

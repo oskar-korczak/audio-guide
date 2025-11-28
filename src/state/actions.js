@@ -7,6 +7,7 @@ import { cleanup as cleanupAudio, unlockAudio } from '../services/audio.js';
 import { setMarkerSelected, setMarkerGenerating, removeAttractionMarker, addAttractionMarker } from '../components/AttractionMarker.js';
 import { hideAudioPlayer } from '../components/AudioPlayer.js';
 import { getMap } from '../components/Map.js';
+import { showWarning } from '../components/ErrorMessage.js';
 
 let abortController = null;
 
@@ -76,6 +77,11 @@ export async function selectAttraction(attraction) {
     setMarkerGenerating(attraction.id, false);
     setState({ currentAudioGuide: audioGuide });
     setAudioStatus('ready');
+
+    // Show warning if location data was unavailable
+    if (audioGuide.locationWarning) {
+      showWarning({ message: audioGuide.locationWarning });
+    }
 
     return audioGuide;
 

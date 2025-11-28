@@ -112,3 +112,45 @@ export function showTimeoutWarning() {
     }
   }, 10000);
 }
+
+/**
+ * Show a warning toast message (non-error, informational)
+ * @param {Object} options - Warning options
+ * @param {string} options.message - Warning message
+ * @param {number} options.autoHide - Auto-hide after ms (default 8000)
+ * @returns {Object} Control object with dismiss method
+ */
+export function showWarning(options) {
+  const {
+    message,
+    autoHide = 8000
+  } = options;
+
+  const warningEl = document.createElement('div');
+  warningEl.className = 'warning-toast';
+
+  warningEl.innerHTML = `
+    <div class="warning-toast-icon">⚠️</div>
+    <div class="warning-toast-content">
+      <div class="warning-toast-message">${message}</div>
+    </div>
+    <button class="dismiss-btn">&times;</button>
+  `;
+
+  const dismissBtn = warningEl.querySelector('.dismiss-btn');
+  dismissBtn.onclick = () => warningEl.remove();
+
+  document.body.appendChild(warningEl);
+
+  if (autoHide > 0) {
+    setTimeout(() => {
+      if (warningEl.parentNode) {
+        warningEl.remove();
+      }
+    }, autoHide);
+  }
+
+  return {
+    dismiss: () => warningEl.remove()
+  };
+}
